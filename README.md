@@ -1,3 +1,11 @@
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <sys/wait.h>
+
+#define WELCOME_MSG "Bienvenue dans le Shell ENSEA.\nPour quitter, tapez 'exit'.\n"
+#define PROMPT "enseash%"
+
 int main() {
     /* Buffer for storing the user's command */
     char command[100];
@@ -11,30 +19,35 @@ int main() {
         write(1, PROMPT, strlen(PROMPT));
 
         /* Read the command from the user */
-        int bytes_read = read(0, command, 100);
-        command[bytes_read-1] = 0;
-	
-	/* Check if the command is "exit" */
-        if (strcmp(command, "exit") == 0) {
-            /* Exit the shell */
-            exit(0);
-        } 
-        else {
-            /* Create a new process to execute the command */
-            pid_t pid = fork();
+        int bytes_read = read(0, command, sizeof(command));
+        
+        // Check for the 'exit' command
+        if (strncmp(command, "exit", 4) == 0) {
+            break; // Exit the loop and the program
+        }
 
-            /* In the child process, execute the command */
-            if (pid == 0) {
-                execlp(command, command, (char *) NULL);
-                /* Exit with a failure status if exec fails */
-                exit(1);
-		
-		} 
-            /* In the parent process, wait for the child to complete */
-            else {
-                wait(NULL);
-            }
+        // Fork to create a child process
+        pid_t pid = fork();
+
+        if (pid == -1) {
+            // Error handling for fork failure
+            perror("fork");
+            exit(EXIT_FAILURE);
+        } else if (pid == 0) {
+            // Child process
+            command[bytes_read-1] = 0;  // Remove the newline character
+            execlp(command, command, (char *) NULL);
+
+            // If execlp fails, print an error message
+            perror("execlp");
+            exit(EXIT_FAILURE);
+        } else {
+            // Parent process
+            // Wait for the child process to finish
+            wait(NULL);
         }
     }
+
     return 0;
 }
+
